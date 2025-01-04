@@ -23,6 +23,11 @@ using namespace std;
 
 // Function Signatures
 void print_row(Row* row);
+void read_input(InputBuffer* input_buffer);
+void* cursor_value(Cursor* cursor);
+Cursor* table_start(Table* table);
+Cursor* table_end(Table* table);
+void cursor_advance(Cursor* cursor);
 
 Pager* pager_open(const char* filename) {
     int fd = open(filename,
@@ -48,24 +53,6 @@ Pager* pager_open(const char* filename) {
     } 
 
     return pager;
-}
-
-void read_input(InputBuffer* input_buffer) {
-    ssize_t bytes_read = getline(
-        &(input_buffer->buffer),
-        &(input_buffer->buffer_length),
-        stdin
-        );
-    
-    if (bytes_read <= 0) {
-        printf("Error reading input.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // Ignore trailing newline
-    input_buffer->input_length = bytes_read - 1;
-    input_buffer->buffer[bytes_read - 1] = 0;
-
 }
 
 void pager_flush(Pager* pager, uint32_t page_num, uint32_t size) {
@@ -191,15 +178,6 @@ void* get_page(Pager* pager, uint32_t page_num) {
     return pager->pages[page_num];
 }
 
-void* row_slot(Table* table, uint32_t row_num) {
-    uint32_t page_num = row_num / ROWS_PER_PAGE;
-    void *page = get_page(table->pager, page_num);
-
-    uint32_t row_offset = row_num % ROWS_PER_PAGE;
-    uint32_t byte_offset = row_offset * ROW_SIZE;
-    return static_cast<char*>(page) + byte_offset;
-}
-
 PrepareResult prepare_insert(InputBuffer* input_buffer, Statement* statement) {
     statement->type = STATEMENT_INSERT;
 
@@ -242,21 +220,29 @@ ExecuteResult execute_insert(Statement* statement, Table* table) {
     if (table->num_rows >= TABLE_MAX_ROWS) 
         return EXECUTE_TABLE_FULL;
     
-    // cout << table->num_rows << " " << TABLE_MAX_ROWS << "\n";
     Row* row_to_insert = &(statement->row_to_insert);
+    Cursor* cursor = table_end(table);
 
-    serialize_row(row_to_insert, row_slot(table, table->num_rows));
+    serialize_row(row_to_insert, cursor_value(cursor));
     table->num_rows++;
+
+    free(cursor);
     
     return EXECUTE_SUCCESS;
 }
 
 ExecuteResult execute_select(Statement* statement, Table* table) {
+    Cursor* cursor = table_start(table);
+
     Row row;
-    for (uint32_t i = 0; i < table->num_rows; i++) {
-        deserialize_row(row_slot(table, i), &row);
+    while (!cursor->end_of_table) {
+        deserialize_row(cursor_value(cursor), &row);
         print_row(&row);
+        cursor_advance(cursor);
     }
+
+    free(cursor);
+
     return EXECUTE_SUCCESS;
 }
 
@@ -269,8 +255,60 @@ ExecuteResult execute_statement(Statement* statement, Table* table) {
     }
 }
 
+Cursor* table_start(Table* table) {
+    Cursor* cursor = new Cursor();
+    cursor->table = table;
+    cursor->row_num = 0;
+    cursor->end_of_table = (table->num_rows == 0);
+
+    return cursor;
+}
+
+Cursor* table_end(Table* table) {
+    Cursor* cursor = new Cursor();
+    cursor->table = table;
+    cursor->row_num = table->num_rows;
+    cursor->end_of_table = true;
+
+    return cursor;
+}
+
+void cursor_advance(Cursor* cursor) {
+    cursor->row_num++;
+    if (cursor->row_num >= cursor->table->num_rows)
+        cursor->end_of_table = true;
+}
+
+void* cursor_value(Cursor* cursor) {
+    uint32_t row_num = cursor->row_num;
+    uint32_t page_num = row_num / ROWS_PER_PAGE;
+    void *page = get_page(cursor->table->pager, page_num);
+
+    uint32_t row_offset = row_num % ROWS_PER_PAGE;
+    uint32_t byte_offset = row_offset * ROW_SIZE;
+    return static_cast<char*>(page) + byte_offset;
+}
+
 void print_row(Row* row) {
     printf("(%d, %s, %s)\n", row->id, row->username, row->email);
+}
+
+void read_input(InputBuffer* input_buffer) {
+    ssize_t bytes_read = getline(
+        &(input_buffer->buffer),
+        &(input_buffer->buffer_length),
+        stdin
+        );
+        
+    if (bytes_read <= 0) {
+        printf("Error reading input.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Ignore trailing newline
+    input_buffer->input_length = bytes_read - 1;
+    input_buffer->buffer[bytes_read - 1] = 0;
+
 }
 
 int main(int argc, char* argv[]) {

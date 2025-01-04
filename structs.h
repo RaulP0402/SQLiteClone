@@ -36,4 +36,10 @@ struct InputBuffer {
     ssize_t input_length;
 };
 
+struct Cursor {
+    Table* table;
+    uint32_t row_num;
+    bool end_of_table;
+};
+
 #endif
