@@ -8,7 +8,7 @@ CXXFLAGS =
 SRC = main.cpp
 
 # The name of output binary
-OUTPUT = main
+OUTPUT = db
 
 # Default target 
 all: $(OUTPUT)

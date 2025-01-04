@@ -1,0 +1,27 @@
+#ifndef ENUMS_H
+#define ENUMS_H
+
+enum MetaCommandResult {
+    META_COMMAND_SUCCESS,
+    META_COMMAND_UNRECOGNIZED_COMMAND
+};
+
+enum PrepareResult {
+    PREPARE_SUCCESS,
+    PREPARE_NEGATIVE_ID,
+    PREPARE_UNRECOGNIZED_STATEMENT,
+    PREPARE_SYNTAX_ERROR,
+    PREPARE_STRING_TOO_LONG
+};
+
+enum StatementType {
+    STATEMENT_INSERT,
+    STATEMENT_SELECT
+};
+
+enum ExecuteResult {
+    EXECUTE_TABLE_FULL,
+    EXECUTE_SUCCESS
+};
+
+#endif

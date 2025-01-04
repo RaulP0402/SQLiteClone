@@ -1,11 +1,12 @@
-// Structs.h
-
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
 #include <stdlib.h>
+#include "enums.h"
+
 #define COLUMN_USERNAME_SIZE 32
 #define COLUMN_EMAIL_SIZE 255
+#define TABLE_MAX_PAGES 100
 
 struct Row {
     uint32_t id;
@@ -13,32 +14,26 @@ struct Row {
     char email[COLUMN_EMAIL_SIZE + 1];
 };
 
-enum MetaCommandResult {
-    META_COMMAND_SUCCESS,
-    META_COMMAND_UNRECOGNIZED_COMMAND
-};
-
-enum PrepareResult {
-    PREPARE_SUCCESS,
-    PREPARE_NEGATIVE_ID,
-    PREPARE_UNRECOGNIZED_STATEMENT,
-    PREPARE_SYNTAX_ERROR,
-    PREPARE_STRING_TOO_LONG
-};
-
-enum StatementType {
-    STATEMENT_INSERT,
-    STATEMENT_SELECT
-};
-
 struct Statement {
     StatementType type;
     Row row_to_insert;
 };
 
-enum ExecuteResult {
-    EXECUTE_TABLE_FULL,
-    EXECUTE_SUCCESS
+struct Pager {
+    int file_descriptor;
+    uint32_t file_length;
+    void* pages[TABLE_MAX_PAGES];
+};
+
+struct Table {
+    uint32_t num_rows;
+    Pager* pager;
+};
+
+struct InputBuffer {
+    char* buffer;
+    size_t buffer_length;
+    ssize_t input_length;
 };
 
 #endif
